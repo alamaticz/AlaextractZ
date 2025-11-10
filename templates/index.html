@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExtractZ - Shipping Bill Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .logo {
+            max-width: 220px;
+            height: auto;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+            display: none; /* Hide text title since we have logo */
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status.processing {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+
+        .status-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .results {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .download-btn {
+            background: #667eea;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .download-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .file-name {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="/static/img/logo.png" alt="ExtractZ Logo" class="logo">
+        <p class="subtitle">Upload PDF or ZIP files to extract shipping bill data</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click to browse or drag & drop</div>
+            <div class="upload-hint">Supports PDF and ZIP files (Max 100MB)</div>
+            <input type="file" id="fileInput" accept=".pdf,.zip">
+        </div>
+
+        <div class="file-name" id="fileName" style="display: none;"></div>
+
+        <button class="btn" id="uploadBtn" disabled>Upload & Process</button>
+
+        <div class="spinner" id="spinner"></div>
+
+        <div class="status" id="status"></div>
+
+        <div class="results" id="results">
+            <div class="result-item">
+                <div class="result-info">
+                    <div class="result-label">Files Processed</div>
+                    <div class="result-value" id="filesProcessed">0</div>
+                </div>
+            </div>
+            <div class="result-item">
+                <div class="result-info">
+                    <div class="result-label">Rows Extracted</div>
+                    <div class="result-value" id="rowsExtracted">0</div>
+                </div>
+            </div>
+            <div class="result-item">
+                <div class="result-info">
+                    <div class="result-label">Download CSV</div>
+                </div>
+                <a class="download-btn" id="downloadCsv" href="#" download>📥 CSV</a>
+            </div>
+            <div class="result-item">
+                <div class="result-info">
+                    <div class="result-label">Download Excel</div>
+                </div>
+                <a class="download-btn" id="downloadExcel" href="#" download>📥 Excel</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const spinner = document.getElementById('spinner');
+        const fileName = document.getElementById('fileName');
+        let selectedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFileSelect(e.dataTransfer.files[0]);
+        });
+
+        function handleFileSelect(file) {
+            if (!file) return;
+
+            const validTypes = ['application/pdf', 'application/zip', 'application/x-zip-compressed'];
+            if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|zip)$/i)) {
+                showStatus('error', '❌ Invalid file type. Please upload a PDF or ZIP file.');
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) {
+                showStatus('error', '❌ File too large. Maximum size is 100MB.');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = `Selected: ${file.name}`;
+            fileName.style.display = 'block';
+            uploadBtn.disabled = false;
+            status.style.display = 'none';
+            results.style.display = 'none';
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            uploadBtn.disabled = true;
+            spinner.style.display = 'block';
+            results.style.display = 'none';
+            showStatus('processing', '⏳ Processing files... Please wait.');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStatus('success', `✅ Successfully processed ${data.files_processed} file(s)!`);
+                    
+                    document.getElementById('filesProcessed').textContent = data.files_processed;
+                    document.getElementById('rowsExtracted').textContent = data.rows_extracted;
+                    document.getElementById('downloadCsv').href = `/download/${data.csv_file}`;
+                    document.getElementById('downloadExcel').href = `/download/${data.excel_file}`;
+                    
+                    results.style.display = 'block';
+                } else {
+                    showStatus('error', `❌ ${data.error || 'An error occurred during processing.'}`);
+                }
+            } catch (error) {
+                showStatus('error', `❌ Network error: ${error.message}`);
+            } finally {
+                spinner.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function showStatus(type, message) {
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
